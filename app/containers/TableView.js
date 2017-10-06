@@ -6,10 +6,10 @@ import React, { Component } from 'react';
 import ReactTable from 'react-table';
 import { ipcRenderer } from 'electron';
 import _ from 'lodash';
-import Structure from '../components/Structure';
-import styles from './TableView.css';
 import { Database } from '../api/Database';
+import StructureView from './StructureView';
 import SpecialTypeMarker from '../components/SpecialTypeMarker';
+import styles from './TableView.css';
 import type { DatabaseType } from '../types/DatabaseType';
 import type { TableType } from '../types/TableType';
 import { DELETE_ROW_CHANNEL } from '../types/channels';
@@ -29,7 +29,7 @@ function removeFromArrayAtIndex(array: Array<any>, index: number) {
 }
 
 type Props = {
-  databases: Array<DatabaseType>,
+  database: DatabaseType,
   databasePath: string,
   selectedTableName: string
 };
@@ -52,8 +52,6 @@ type State = {
 
 export default class TableView extends Component<Props, State> {
   databaseApi: Database;
-  state: State;
-
   constructor(props: Props) {
     super(props);
     this.databaseApi = new Database(this.props.databasePath);
@@ -223,7 +221,9 @@ export default class TableView extends Component<Props, State> {
     // If no selectedRowIndex, treat shiftClick like a regular click
     if (!this.state.selectedRowIndex) {
       this.handleRowSelection(rowIndex);
+      return;
     }
+
     this.setState({
       selectedRowsIndices: new Set(
         getAllNumbersBetween(this.state.selectedRowIndex, rowIndex)
@@ -353,8 +353,7 @@ export default class TableView extends Component<Props, State> {
 
   componentWillMount = () => {
     this.setState({ loading: true });
-    if (this.props.databases.length === 0) return;
-    const foundTable = this.props.databases[0].tables.find(
+    const foundTable = this.props.database.tables.find(
       e => e.tableName === this.props.selectedTableName
     );
     if (!foundTable) {
@@ -368,18 +367,16 @@ export default class TableView extends Component<Props, State> {
     });
   };
 
-  componentDidMount = async () => {
-    await this.databaseApi.connect();
+  componentDidMount = () => {
+    this.databaseApi.connect();
   };
-
   /**
    * Occurs when state.selectedTableName changes. Should update tableData
    * and reset selection/editing state
    */
   componentWillReceiveProps = (nextProps: Props) => {
     this.setState({ loading: true });
-    if (nextProps.databases.length === 0) return;
-    const foundTable = nextProps.databases[0].tables.find(
+    const foundTable = nextProps.database.tables.find(
       e => e.tableName === nextProps.selectedTableName
     );
     if (!foundTable) {
@@ -443,7 +440,7 @@ export default class TableView extends Component<Props, State> {
                 })}
               />
             </div>) ||
-            <Structure
+            <StructureView
               selectedTableName={this.props.selectedTableName}
               tableColumnsPromise={this.databaseApi.getTableColumns(
                 this.props.selectedTableName
